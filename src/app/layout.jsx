@@ -1,4 +1,6 @@
 import { Inter } from 'next/font/google';
+import Image from 'next/image';
+import Link from 'next/link';
 import './globals.css';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -16,13 +18,20 @@ export default function RootLayout({ children }) {
           <div className="container mx-auto px-4 py-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-8">
-                <img src="/images/logo.svg" alt="CyberMinds" className="logo" />
+                <Image 
+                  src="/images/logo.svg" 
+                  alt="CyberMinds" 
+                  className="logo"
+                  width={40}
+                  height={40}
+                  priority
+                />
                 <div className="flex items-center space-x-6">
-                  <a href="/" className="nav-link">Home</a>
-                  <a href="/jobs" className="nav-link">Find Jobs</a>
-                  <a href="/talents" className="nav-link">Find Talents</a>
-                  <a href="/about" className="nav-link">About us</a>
-                  <a href="/testimonials" className="nav-link">Testimonials</a>
+                  <Link href="/" className="nav-link">Home</Link>
+                  <Link href="/jobs" className="nav-link">Find Jobs</Link>
+                  <Link href="/talents" className="nav-link">Find Talents</Link>
+                  <Link href="/about" className="nav-link">About us</Link>
+                  <Link href="/testimonials" className="nav-link">Testimonials</Link>
                 </div>
               </div>
               <button className="create-job-btn">Create Jobs</button>
