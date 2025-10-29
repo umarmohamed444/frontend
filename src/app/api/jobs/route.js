@@ -3,13 +3,63 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-// GET jobs with filters
+// GET jobs with filters (optimized with Prisma `where` clause)
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
-    
-    // Get all jobs first
-    let jobs = await prisma.job.findMany({
+
+    // Build the filter object for Prisma
+    const filters = {};
+
+    const title = searchParams.get('title');
+    if (title) {
+      filters.title = {
+        contains: title,
+        mode: 'insensitive', // Case-insensitive search
+      };
+    }
+
+    const workMode = searchParams.get('workMode');
+    if (workMode) {
+      filters.workMode = workMode;
+    }
+
+    const location = searchParams.get('location');
+    if (location) {
+      filters.location = {
+        contains: location,
+        mode: 'insensitive',
+      };
+    }
+
+    const jobType = searchParams.get('jobType');
+    if (jobType) {
+      // Assuming jobType in DB is like 'FULL_TIME' and from client is 'fulltime'
+      filters.jobType = jobType.toUpperCase().replace(' ', '_');
+    }
+
+    const minSalary = searchParams.get('minSalary');
+    if (minSalary) {
+      filters.minSalary = {
+        gte: parseFloat(minSalary),
+      };
+    }
+
+    const maxSalary = searchParams.get('maxSalary');
+    if (maxSalary) {
+      filters.maxSalary = {
+        // If a job's max salary is 0 or null, it might be unpaid.
+        // We include it unless a specific max is set.
+        lte: parseFloat(maxSalary) || undefined,
+      };
+    }
+
+    // Always filter for published jobs on the main listing
+    filters.status = 'PUBLISHED';
+
+    // Fetch jobs directly with the applied filters
+    const jobs = await prisma.job.findMany({
+      where: filters,
       include: {
         company: {
           select: {
@@ -22,50 +72,6 @@ export async function GET(request) {
         postedAt: 'desc',
       },
     });
-
-    // Apply filters if they exist
-    const title = searchParams.get('title');
-    const workMode = searchParams.get('workMode');
-    const location = searchParams.get('location');
-    const jobType = searchParams.get('jobType');
-    const minSalary = searchParams.get('minSalary');
-    const maxSalary = searchParams.get('maxSalary');
-
-    // Filter by title
-    if (title) {
-      jobs = jobs.filter(job => 
-        job.title.toLowerCase().includes(title.toLowerCase())
-      );
-    }
-
-    // Filter by work mode
-    if (workMode) {
-      jobs = jobs.filter(job => job.workMode === workMode);
-    }
-
-    // Filter by location
-    if (location) {
-      jobs = jobs.filter(job => 
-        job.location.toLowerCase().includes(location.toLowerCase())
-      );
-    }
-
-    // Filter by job type
-    if (jobType) {
-      jobs = jobs.filter(job => job.jobType === jobType);
-    }
-
-    // Filter by salary range
-    if (minSalary || maxSalary) {
-      jobs = jobs.filter(job => {
-        const meetsMinSalary = !minSalary || job.minSalary >= parseFloat(minSalary);
-        const meetsMaxSalary = !maxSalary || job.maxSalary <= parseFloat(maxSalary);
-        return meetsMinSalary && meetsMaxSalary;
-      });
-    }
-
-    // Filter published jobs by default
-    jobs = jobs.filter(job => job.status === 'PUBLISHED');
 
     return NextResponse.json({ jobs });
   } catch (error) {

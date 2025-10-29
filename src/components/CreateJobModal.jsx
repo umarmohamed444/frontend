@@ -1,8 +1,9 @@
 'use client';
-import { ChevronsDown, ChevronsRight, ChevronUp, ChevronDown, ChevronLeft, Calendar } from "lucide-react";
+import { ChevronsRight, ChevronUp, ChevronDown, ChevronLeft, Calendar } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner"; // Import toast for notifications
 
-export default function CreateJobModal({ isOpen, onClose, onCreate }) {
+export default function CreateJobModal({ isOpen, onClose, onJobCreated }) {
   if (!isOpen) return null;
 
   // State for dropdowns and calendar
@@ -12,8 +13,7 @@ export default function CreateJobModal({ isOpen, onClose, onCreate }) {
   
   // State for API calls and errors
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-
+  
   // Controlled form fields
   const [title, setTitle] = useState('');
   const [companyName, setCompanyName] = useState('');
@@ -89,11 +89,15 @@ export default function CreateJobModal({ isOpen, onClose, onCreate }) {
     setMinSalary('');
     setMaxSalary('');
     setDescription('');
-    setError(null);
   };
 
   const handleSubmit = async (status) => {
-    setError(null);
+    // Basic Validation
+    if (!title.trim() || !companyName.trim()) {
+      toast.error("Job Title and Company Name are required.");
+      return;
+    }
+
     setLoading(true);
 
     // Automatically generate the company logo URL using the Clearbit API
@@ -109,8 +113,8 @@ export default function CreateJobModal({ isOpen, onClose, onCreate }) {
         description,
         minExperience: 1, // Default value
         maxExperience: 3, // Default value
-        minSalary: parseFloat(minSalary) || 0,
-        maxSalary: parseFloat(maxSalary) || 0,
+        minSalary: parseFloat(minSalary) * 100000 || 0, // Convert LPA to absolute
+        maxSalary: parseFloat(maxSalary) * 100000 || 0, // Convert LPA to absolute
         jobType: selectedJobType.toUpperCase().replace(" ", "_"),
         workMode: 'ONSITE', // Default value
         applicationDeadline: selectedDate ? selectedDate.toISOString() : null,
@@ -126,15 +130,19 @@ export default function CreateJobModal({ isOpen, onClose, onCreate }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || 'Failed to create job');
 
-      if (onCreate && data.job) {
-        onCreate(data.job);
+      // Show success message
+      toast.success(`Job successfully ${status === 'PUBLISHED' ? 'published' : 'saved as draft'}!`);
+
+      // Trigger refetch on the parent page
+      if (onJobCreated) {
+        onJobCreated();
       }
 
       resetForm();
-      onClose();
+      onClose(); // Close the modal
     } catch (err) {
       console.error(err);
-      setError(err.message || 'An unexpected error occurred');
+      toast.error(err.message || 'An unexpected error occurred');
     } finally {
       setLoading(false);
     }
@@ -203,8 +211,8 @@ export default function CreateJobModal({ isOpen, onClose, onCreate }) {
           <div className="form-group">
             <label className="form-label">Salary Range (LPA)</label>
             <div className="flex items-center space-x-2">
-              <input value={minSalary} onChange={(e) => setMinSalary(e.target.value)} type="number" className="form-input" placeholder="e.g., 500000" />
-              <input value={maxSalary} onChange={(e) => setMaxSalary(e.target.value)} type="number" className="form-input" placeholder="e.g., 1200000" />
+              <input value={minSalary} onChange={(e) => setMinSalary(e.target.value)} type="number" className="form-input" placeholder="e.g., 5" />
+              <input value={maxSalary} onChange={(e) => setMaxSalary(e.target.value)} type="number" className="form-input" placeholder="e.g., 12" />
             </div>
           </div>
 
@@ -249,8 +257,6 @@ export default function CreateJobModal({ isOpen, onClose, onCreate }) {
             />
           </div>
         </form>
-
-        {error && <div className="text-red-600 mt-4 text-center">{error}</div>}
 
         <div className="flex justify-between items-center mt-6">
             <button type="button" disabled={loading} onClick={() => handleSubmit('DRAFT')} className="border-2 border-gray-300 rounded-lg px-5 py-3 text-gray-700 font-medium hover:bg-gray-50 disabled:opacity-50">
