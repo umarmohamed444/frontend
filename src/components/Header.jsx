@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import CreateJobModal from './CreateJobModal';
 
-// Header is now simplified and only handles navigation and opening the Create Job modal.
+
 export default function Header() {
   const [isCreateJobOpen, setIsCreateJobOpen] = useState(false);
 
